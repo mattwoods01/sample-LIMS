@@ -99,6 +99,7 @@ Bucket Policy:
 ## Environment Setup
 
 ### .bashrc Configuration
+
 # Source global definitions
 if [ -f /etc/bashrc ]; then
         . /etc/bashrc
@@ -248,4 +249,4 @@ Each module contains independent URLs, views, WebSocket consumers, templates, CS
 ---
 
 ## License
-Internal / proprietary. Modify as needed based on deployment environment.
+Internal / proprietary. Modify based on deployment environment.
