@@ -99,9 +99,7 @@ S3 Bucket: lsg-bid-services
 
 ## Environment Setup
 
-### .bashrc Configuration
-
-#### Source global definitions
+#### .bashrc Configuration
 <pre> 
 if [ -f /etc/bashrc ]; then
         . /etc/bashrc
