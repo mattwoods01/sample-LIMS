@@ -102,7 +102,8 @@ S3 Bucket: lsg-bid-services
 ### .bashrc Configuration
 
 # Source global definitions
-<pre> if [ -f /etc/bashrc ]; then
+<pre> 
+if [ -f /etc/bashrc ]; then
         . /etc/bashrc
 fi
 
@@ -111,12 +112,16 @@ export PYTHONPATH=/usr/lib64/python3.7/site-packages
 export UNO_PATH=/usr/lib64/libreoffice/program
 export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk/jre/bin/java
 
+</pre>
+
 # Mount S3 bucket
+<pre>
 /usr/bin/s3fs lsg-bid-services ~/s3 -o passwd_file=${HOME}/.bucket_password
+</pre>
 
 # Conda initialization
+<pre>
 export LD_PRELOAD=/usr/lib64/libstdc++.so.6
-
 </pre>
 
 ---
