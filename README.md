@@ -101,7 +101,7 @@ S3 Bucket: lsg-bid-services
 
 ### .bashrc Configuration
 
-# Source global definitions
+#### Source global definitions
 <pre> 
 if [ -f /etc/bashrc ]; then
         . /etc/bashrc
@@ -114,12 +114,12 @@ export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk/jre/bin/java
 
 </pre>
 
-# Mount S3 bucket
+#### Mount S3 bucket
 <pre>
 /usr/bin/s3fs lsg-bid-services ~/s3 -o passwd_file=${HOME}/.bucket_password
 </pre>
 
-# Conda initialization
+#### Conda initialization
 <pre>
 export LD_PRELOAD=/usr/lib64/libstdc++.so.6
 </pre>
