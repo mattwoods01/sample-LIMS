@@ -73,7 +73,7 @@ Client → NGINX → Gunicorn + Uvicorn → Django ASGI → App Modules
 
 S3 Bucket: lsg-bid-services
 
-Bucket Policy:
+<pre> Bucket Policy:
 {
     "Version": "2012-10-17",
     "Statement": [
@@ -93,6 +93,7 @@ Bucket Policy:
         }
     ]
 }
+</pre>
 
 ---
 
