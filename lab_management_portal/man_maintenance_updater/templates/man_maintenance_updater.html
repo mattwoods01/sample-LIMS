@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Labguru Equipment Maintenance Updater</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.min.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: left;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0 0 200px 0;
+            background-color: #ceecf2;
+        }
+
+        #chat {
+            flex-grow: 1;
+            width: 500px;
+            height: 100px;
+            margin-left: 10px;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            height: 100px;
+            background-color: rgb(239, 239, 239);
+            overflow-y: scroll;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        #modal-table {
+            width: 100%;
+            height: 70vh;
+            z-index: 2;
+        }
+
+        .modal-dialog {
+            max-width: 95%;
+            width: 95%;
+            max-height: 95%;
+            height: 95%;
+        }
+
+        .modal-content {
+            height: 100%;
+        }
+
+        .modal-body {
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            z-index: 2;
+            position: relative;
+        }
+
+        #readme {
+            padding-bottom: 50px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Labguru Equipment Maintenance Updater</h1>
+    <div id="chat">
+        <ul id="chat-messages"></ul>
+        <input type="file" id="file-input">
+        <button id="upload-button" class="btn btn-primary">Upload</button>
+        <!-- <input type="file" id="zip-file-input" style="display:none"> -->
+
+        <div id="upload-status"></div>
+        <button id="Run" class="btn btn-primary">Run</button>
+        <button id="return-maintenance" class="btn btn-primary">Download Maintenance Sheet</button>
+
+        <div id="spreadsheet"></div>
+        <div id="readme">{{ readme|safe }}</div>
+    </div>
+
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/man_maintenance_updater/');
+        let hot; 
+        let modalHot;
+
+        socket.onopen = function(e) {
+            console.log('WebSocket connection established');
+        };
+        
+        socket.onerror = function(e) {
+            console.error('WebSocket error:', e);
+        };
+        
+        socket.onclose = function(e) {
+            console.log('WebSocket connection closed');
+        };
+        
+        socket.onmessage = function(event) {
+            var data = JSON.parse(event.data);
+
+            if (data.event === "return_data") {   
+                hot.updateSettings({
+                    // colHeaders: data['up_headers'],
+                    data: data['up_data']
+                });
+                hot.render();
+
+            } else if (data.event === "return_output") {
+                let ul = document.getElementById("chat-messages");
+                let li = document.createElement("li");
+                li.appendChild(document.createTextNode(data["message"]));
+                ul.appendChild(li);
+                ul.scrollTop = ul.scrollHeight;
+
+            } else if (data.event === "return_file") {
+                var excelData = data.file_data;
+                var fileName = data.file_name;
+                var downloadLink = document.createElement('a');
+                downloadLink.href = "data:application/excel;base64," + excelData;
+                downloadLink.download = fileName;
+                downloadLink.click();
+
+            }  else if (data.event == "return_supporting_excel") {
+                var excelData = data.file_data;
+                var fileName = data.file_name;
+                var downloadLink = document.createElement('a');
+                downloadLink.href = "data:application/excel;base64," + excelData;
+                downloadLink.download = fileName;
+                downloadLink.click();  
+            };
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var maintenanceOptions = JSON.parse('{{ maintenance_json|escapejs }}');
+            var container = document.getElementById('spreadsheet');
+            hot = new Handsontable(container, {
+                data: {{ initial_data|safe }},
+                rowHeaders: true,
+                colHeaders: {{ initial_headers|safe }},
+                contextMenu: true,
+                fillHandle: { autoInsertRow: true },
+                columns: [
+                    {
+                        type: 'dropdown',
+                        source: Object.keys(maintenanceOptions) // All your equipment codes
+                    },
+                    {
+                        type: 'dropdown',
+                        source: [] // Initially empty or all-inclusive
+                    },
+                    {},
+                    {},
+                ],
+                licenseKey: 'non-commercial-and-evaluation',
+                height: 500,
+                width: 800,
+                stretchH: 'all'
+            });
+
+            hot.addHook('afterChange', function(changes, source) {
+                if (source === 'edit' && changes) {
+                    changes.forEach(([row, prop, oldValue, newValue]) => {
+                        if (prop === 0) { 
+                            var dependentData = maintenanceOptions[newValue] || [];
+                            var cellMeta = hot.getCellMeta(row, 1); 
+                            cellMeta.source = dependentData;
+                            hot.setCellMeta(row, 1, 'source', dependentData);
+                            hot.setDataAtCell(row, 1, dependentData[0]); 
+                            hot.render();
+                        }
+                    });
+                }
+            });
+
+            document.getElementById('upload-button').addEventListener('click', function() {
+                var fileInput = document.getElementById('file-input');
+                var file = fileInput.files[0];
+                if (file) {
+                    var reader = new FileReader();
+                    reader.onload = function(e) {
+                        var fileData = e.target.result;
+                        var base64Data = btoa(
+                            new Uint8Array(fileData)
+                                .reduce((data, byte) => data + String.fromCharCode(byte), '')
+                        );
+                        socket.send(JSON.stringify({
+                            event: 'file_upload',
+                            file_data: base64Data,
+                            filename: file.name,
+                        }));
+                    };
+                    reader.readAsArrayBuffer(file);
+                }
+            });
+
+            const runButton = document.getElementById('Run');
+            if (runButton) {
+                runButton.addEventListener('click', function() {
+                    var updatedData = hot.getData();
+                    var colHeaders = hot.getColHeader();
+                    var requestData = {
+                        headers: colHeaders,
+                        data: updatedData,
+                    };
+                    socket.send(JSON.stringify({
+                        event: 'run_program',
+                        data: requestData
+                    }));
+                });
+            }
+
+            const returnMaintenanceButton = document.getElementById('return-maintenance');
+            if (returnMaintenanceButton) {
+                returnMaintenanceButton.addEventListener('click', function() {
+                    socket.send(JSON.stringify({
+                        event: 'return_maintenance'
+                    }));
+                });
+            }
+        });
+    </script>
+</body>
+</html>
