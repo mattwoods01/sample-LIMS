@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>lentitools COA Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.min.css">
+    <!-- <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet"> -->
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <!-- <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script> -->
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: left;
+            height: 70vh;
+            background-color: #ceecf2;
+        }
+
+        #chat {
+            flex-grow: 1;
+            width: 500px;
+            height: 100px;
+            margin-left: 10px;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            height: 100px;
+            background-color: rgb(239, 239, 239);
+            overflow-y: scroll;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        #form_table {
+            margin-bottom: 20px; 
+            margin-top: 20px; 
+        }
+
+    </style>
+
+</head>
+<body>
+    <h1>lentitools COA Generator</h1>
+    <div>{{ readme | safe }}</div>
+    <div id="chat">
+        <ul id="chat-messages"></ul>
+        <button id="Run">Run</button>
+        <div id="form_table"></div>
+    </div>
+
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/lentitools_coa_generator/');
+        let hot; 
+
+        socket.onopen = function(e) {
+            console.log('WebSocket connection established');
+        };
+        
+        socket.onerror = function(e) {
+            console.error('WebSocket error:', e);
+        };
+        
+        socket.onclose = function(e) {
+            console.log('WebSocket connection closed');
+        };
+
+        socket.onmessage = function (event) {
+            var data = JSON.parse(event.data);
+
+            if (data.event === "return_output") {
+                let ul = document.getElementById("chat-messages");
+                let li = document.createElement("li");
+                li.appendChild(document.createTextNode(data.message));
+                ul.appendChild(li);
+                ul.scrollTop = ul.scrollHeight;
+                
+            } else if (data.event === "return_file") {
+                var downloadLink = document.createElement('a');
+                downloadLink.href = "data:application/zip;base64," + data.data;
+                downloadLink.download = 'Output.zip';
+                downloadLink.click();
+            }
+        };
+
+        window.onbeforeunload = function () {
+            socket.close();
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var container = document.getElementById('form_table');
+            hot = new Handsontable(container, {
+                data: {{ form_initial | safe }},
+                rowHeaders: true,
+                colHeaders: {{ form_headers | safe }},
+                contextMenu: true,
+                fillHandle: { autoInsertRow: true },
+                licenseKey: 'non-commercial-and-evaluation',
+            });
+
+            document.getElementById('Run').addEventListener('click', function() {
+                var form_headers = hot.getColHeader();
+                var form_data = hot.getData();
+
+                var requestData = {
+                    event: "run_program",
+                    form_headers: form_headers,
+                    form_data: form_data
+                };
+
+                socket.send(JSON.stringify(requestData));
+            });
+        });
+    </script>
+</body>
+</html>

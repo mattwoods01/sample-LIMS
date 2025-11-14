@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Pluritest PPTX Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: left;
+            height: 70vh;
+            background-color: #ceecf2;
+        }
+
+        #chat {
+            flex-grow: 1;
+            width: 500px;
+            height: 100px;
+            margin-left: 10px;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            height: 100px;
+            background-color: rgb(239, 239, 239);
+            overflow-y: scroll;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        #form_table {
+            margin-bottom: 20px; 
+            margin-top: 20px; 
+        }
+
+    </style>
+
+</head>
+<body>
+    <h1>Pluritest PPTX Generator</h1>
+    <div>{{ readme | safe }}</div>
+    <div id="chat">
+        <p>Step 1: Upload raw image pdf of analysis details from pluritest.org.</p>
+        <ul id="chat-messages"></ul>
+        <input type="file" id="file-input">
+        <p>Step 2: Copy over project line item from chacterization project tracker.</p>
+        <div id="form_table"></div>
+        <p>Step 3: Copy over project samples and controls from Pluritest Technical tracker.</p>
+        <div id="input_table"></div>
+        <button id="Run">Step 4: Create Report</button>
+    </div>
+
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/pluritest_form_generator/');
+        let form_hot;
+        let input_hot;
+        let folderName;
+
+        socket.onopen = function(e) {
+            console.log('WebSocket connection established');
+        };
+        
+        socket.onerror = function(e) {
+            console.error('WebSocket error:', e);
+        };
+        
+        socket.onclose = function(e) {
+            console.log('WebSocket connection closed');
+        };
+
+        socket.onmessage = function(event) {
+            var data = JSON.parse(event.data);
+            
+            if (data.event === "folder_name") {
+                folderName = data.folder_name; 
+            } else if (data.event === "return_output") {
+                let ul = document.getElementById("chat-messages");
+                let li = document.createElement("li");
+                li.appendChild(document.createTextNode(data.message));
+                ul.appendChild(li);
+                ul.scrollTop = ul.scrollHeight;
+            } else if (data.event === "return_file") {
+                var fileName = data.data[0];
+                var zipData = data.data[1];
+                var downloadLink = document.createElement('a');
+                downloadLink.href = "data:application/pptx;base64," + zipData;
+                downloadLink.download = fileName;
+                downloadLink.click();
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var container = document.getElementById('form_table');
+                form_hot = new Handsontable(container, {
+                data: {{ form_initial | safe }},
+                rowHeaders: true,
+                colHeaders: {{ form_headers | safe }},
+                contextMenu: true,
+                fillHandle: { autoInsertRow: true },
+                licenseKey: 'non-commercial-and-evaluation',
+            });
+
+            var inputContainer = document.getElementById('input_table');
+                input_hot = new Handsontable(inputContainer, {
+                data: {{ data_initial | safe }},
+                rowHeaders: true,
+                colHeaders: {{ data_headers | safe }},
+                contextMenu: true,
+                fillHandle: { autoInsertRow: true },
+                licenseKey: 'non-commercial-and-evaluation'
+            });
+
+            document.getElementById('Run').addEventListener('click', function() {
+                var form_headers = form_hot.getColHeader();
+                var form_data = form_hot.getData();
+
+                var input_headers = input_hot.getColHeader();
+                var input_data = input_hot.getData();
+
+                var requestData = {
+                    event: "run_pluritest",
+                    form_headers: form_headers,
+                    form_data: form_data,
+                    input_headers: input_headers,
+                    input_data: input_data
+                };
+
+                socket.send(JSON.stringify(requestData));
+            });
+            
+            document.getElementById('file-input').addEventListener('change', function() {
+                var fileInput = document.getElementById('file-input');
+                var file = fileInput.files[0];
+                        
+                var reader = new FileReader();
+                        
+                reader.onload = function(e) {
+                    var bytes = new Uint8Array(reader.result);
+                    var fileData = {
+                        event: "upload_pluritest",
+                        file_data: Array.from(bytes), // Convert Uint8Array to Array for JSON serialization
+                        file_name: file.name
+                    };
+                
+                    socket.send(JSON.stringify(fileData));
+                };
+            
+                reader.readAsArrayBuffer(file);
+            });
+
+        });
+    </script>
+</body>
+</html>

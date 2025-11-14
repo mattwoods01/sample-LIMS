@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TALON COA Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: left;
+            height: 70vh;
+            background-color: #ceecf2;
+        }
+
+        #chat {
+            flex-grow: 1;
+            width: 500px;
+            height: 100px;
+            margin-left: 10px;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            height: 100px;
+            background-color: rgb(239, 239, 239);
+            overflow-y: scroll;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        #form_table {
+            margin-bottom: 20px; 
+            margin-top: 20px; 
+        }
+
+    </style>
+</head>
+<h1>TALON COA Generator</h1>
+<div>{{ readme | safe }}</div>
+<div id="chat">
+    <ul id="chat-messages"></ul>
+    <button id="Run">Run</button>
+
+    <label for="kit">Kit:</label>
+    <select name="kit" id="kit">
+        <optgroup label="Talon Kits">
+            {% for option in options %}
+            <option value="{{ option }}">{{ option }}</option>
+            {% endfor %}
+        </optgroup>
+    </select>
+
+    <div id="form_table"></div>
+    <div id="input_table"></div>
+</div>
+
+
+
+<body>
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/talon_coa_generator/');
+        let input_hot;
+        let form_hot; 
+
+        socket.onopen = function(e) {
+            console.log('WebSocket connection established');
+        };
+        
+        socket.onerror = function(e) {
+            console.error('WebSocket error:', e);
+        };
+        
+        socket.onclose = function(e) {
+            console.log('WebSocket connection closed');
+        };
+
+        socket.onmessage = function(event) {
+            const data = JSON.parse(event.data);
+            console.log("Received data: ", data);
+
+            if (data.event === 'return_output') {
+                let ul = document.getElementById("chat-messages");
+                let li = document.createElement("li");
+                li.appendChild(document.createTextNode(data.message));
+                ul.appendChild(li);
+                ul.scrollTop = ul.scrollHeight;
+            }
+        
+            if (data.event === 'return_file') {
+                const fileName = data.data[0];
+                const zipData = data.data[1];
+                const downloadLink = document.createElement('a');
+                downloadLink.href = "data:application/pdf;base64," + zipData;
+                downloadLink.download = fileName;
+                downloadLink.click();
+            }
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            var container = document.getElementById('form_table');
+                form_hot = new Handsontable(container, {
+                data: {{ form_initial | safe }},
+                rowHeaders: true,
+                colHeaders: {{ form_headers | safe }},
+                contextMenu: true,
+                fillHandle: { autoInsertRow: true },
+                licenseKey: 'non-commercial-and-evaluation'
+            }); 
+            
+            var container = document.getElementById('input_table');
+                input_hot = new Handsontable(container, {
+                data: {{ data_initial | safe }},
+                rowHeaders: true,
+                colHeaders: {{ data_headers | safe }},
+                contextMenu: true,
+                fillHandle: { autoInsertRow: true },
+                licenseKey: 'non-commercial-and-evaluation'
+            }); 
+        
+            document.getElementById('Run').addEventListener('click', function() {
+                var form_headers = form_hot.getColHeader();
+                var form_data= form_hot.getData();
+                var input_headers = input_hot.getColHeader();
+                var input_data= input_hot.getData();
+                var selectedKit = document.getElementById('kit').value;
+
+                var requestData = {
+                    event: "run_program",
+                    form_headers: form_headers,
+                    form_data: form_data,
+                    input_headers: input_headers,
+                    input_data: input_data,
+                    selected_kit: selectedKit
+                };
+
+                socket.send(JSON.stringify(requestData));
+            });
+
+        });
+    </script>
+</body>
+</html>
