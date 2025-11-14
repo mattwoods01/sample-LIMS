@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Services Application Page</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.min.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <style>
+        form {
+            margin-bottom: 20px;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: left;
+            height: 70vh;
+            background-color: #ceecf2;
+        }
+
+        #chat {
+            flex-grow: 1;
+            width: 500px;
+            height: 100px;
+            margin-left: 10px;
+            margin-bottom: 10px;
+            margin-top: 10px;
+            margin-right: 10px;
+        }
+
+        ul {
+            background-color: rgb(239, 239, 239);
+        }
+
+        li {
+            list-style: none;
+        }
+
+        #chat button {
+            margin-bottom: 10px;
+            margin-right: 10px;
+        }
+
+
+
+    </style>
+</head>
+<body>
+    <h1>Services Application Page</h1>
+    <div>{{ readme | safe }}</div>
+
+    <ul class="nav nav-tabs" id="myTab" role="tablist">
+
+        <li class="nav-item">
+            <a class="nav-link active" id="labguru-tab" data-toggle="tab" href="#labguru" role="tab" aria-controls="labguru" aria-selected="true">Labguru Applications</a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" id="form-tab" data-toggle="tab" href="#form" role="tab" aria-controls="form" aria-selected="false">Form Generators</a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" id="query-tab" data-toggle="tab" href="#query" role="tab" aria-controls="query" aria-selected="false">Query Tools</a>
+        </li>
+
+        <li class="nav-item">
+            <a class="nav-link" id="analysis-tab" data-toggle="tab" href="#analysis" role="tab" aria-controls="analysis" aria-selected="false">Analysis Tools</a>
+        </li>
+
+    </ul>
+
+    <div class="tab-content" id="myTabContent">
+        <div class="tab-pane fade show active" id="labguru" role="tabpanel" aria-labelledby="labguru-tab">
+            <div id="chat">
+                <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#actionModal">
+                    Maintenance Updater
+                </button>
+
+                <button type="button" class="btn btn-primary" onclick="location.href='/attachment_uploader'">
+                    Attachment Uploader
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="form" role="tabpanel" aria-labelledby="form-tab">
+            <div id="chat">
+                <button type="button" class="btn btn-primary" onclick="location.href='/lentitools_coa_generator'">
+                    LentiTools COA Generator
+                </button>
+
+                <button type="button" class="btn btn-primary" onclick="location.href='/mrna_coa_generator'">
+                    mRNA COA Generator
+                </button>
+
+                <button type="button" class="btn btn-primary" onclick="location.href='/talon_coa_generator'">
+                    Talon COA Generator
+                </button>
+
+                <button type="button" class="btn btn-primary" onclick="location.href='/pluritest_form_generator'">
+                    Pluritest Report Generator
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="query" role="tabpanel" aria-labelledby="query-tab">
+            <div id="chat">
+                <button type="button" class="btn btn-primary" onclick="location.href='/lenti_cherrypick'">
+                    LentiArray Cherrypick
+                </button>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="analysis" role="tabpanel" aria-labelledby="analysis-tab">
+            <div id="chat">
+                <button type="button" class="btn btn-primary" onclick="location.href='/lentipool_analysis_tool'">
+                    Lentipool Analysis Tool
+                </button>
+            </div>
+        </div>
+
+
+    </div>
+
+    <!-- Modal for selecting action -->
+    <div class="modal fade" id="actionModal" tabindex="-1" role="dialog" aria-labelledby="actionModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="actionModalLabel">Select Maintenance Updater</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <form id="maintenanceForm">
+                        <div class="form-group">
+                            <label for="actionSelect">Choose an option:</label>
+                            <select class="form-control" id="actionSelect">
+                                <option value="/man_maintenance_updater/">Manual</option>
+                                <option value="/scan_maintenance_updater/">Scanned</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Go</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('maintenanceForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            var action = document.getElementById('actionSelect').value;
+            window.location.href = action;
+        });
+    </script>
+</body>
+</html>

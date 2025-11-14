@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>lentitools COA Generator</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.min.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/handsontable/dist/handsontable.full.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: left;
+            height: 70vh;
+            background-color: #ceecf2;
+        }
+
+        #chat {
+            flex-grow: 1;
+            width: 500px;
+            height: 100px;
+            margin-left: 10px;
+            margin-bottom: 10px;
+        }
+
+        ul {
+            height: 100px;
+            background-color: rgb(239, 239, 239);
+            overflow-y: scroll;
+        }
+
+        li {
+            list-style: none;
+        }
+
+        .file-upload-container {
+            border: 2px dashed #ccc;
+            padding: 20px;
+            text-align: center;
+            background-color: white;
+            border-radius: 10px;
+            width: 500px;
+            transition: border-color 0.3s;
+            /* margin-left: 10px; */
+            margin-bottom: 20px;
+            margin-top: 20px;
+        }
+
+        .file-upload-container.dragover {
+            border-color: #666;
+        }
+
+        .file-upload-label {
+            display: block;
+            cursor: pointer;
+            padding: 20px;
+            background-color: #eee;
+            border-radius: 5px;
+            transition: background-color 0.3s;
+        }
+
+        .file-upload-label:hover {
+            background-color: #ddd;
+        }
+
+        .upload-icon {
+            font-size: 50px;
+            margin-bottom: 10px;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        #file-list {
+            margin-top: 20px;
+            text-align: left;
+            padding-left: 0;
+        }
+
+        #file-list li {
+            list-style: none;
+            margin-bottom: 10px;
+        }
+
+        #modal-table {
+            width: 100%;
+            height: 70vh;
+            z-index: 2;
+        }
+
+        .modal-dialog {
+            max-width: 95%;
+            width: 95%;
+            max-height: 95%;
+            height: 95%;
+        }
+
+        .modal-content {
+            height: 100%;
+        }
+
+        .modal-body {
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            z-index: 2;
+            position: relative;
+        }
+    </style>
+</head>
+<body>
+    <h1>Labguru File Attacher</h1>
+    <div>{{ readme | safe }}</div>
+    <div id="chat">
+        <ul id="chat-messages"></ul>
+        <button id="Run" class="btn btn-primary">Run</button>
+        <div class="file-upload-container">
+            <input type="file" id="file-input" multiple>
+            <label for="file-input" class="file-upload-label">
+                <div class="upload-icon">📂</div>
+                <span>Drag & drop your files here or click to upload</span>
+            </label>
+            <ul id="file-list"></ul>
+        </div>
+    </div>
+
+    <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="exampleModalLabel">Scanned output:</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <div id="modal-table"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" id="save-changes-button" class="btn btn-primary">Save changes</button>
+                    <input type="file" id="supporting-documents-input" style="display: none;">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = new WebSocket('ws://' + window.location.host + '/ws/attachment_uploader/');
+        let modalHot;
+
+        socket.onopen = function(e) {
+            console.log('WebSocket connection established');
+        };
+
+        socket.onerror = function(e) {
+            console.error('WebSocket error:', e);
+        };
+
+        socket.onclose = function(e) {
+            console.log('WebSocket connection closed');
+        };
+
+        socket.onmessage = function (event) {
+            var data = JSON.parse(event.data);
+            if (data.event === "return_output") {
+                let ul = document.getElementById("chat-messages");
+                let li = document.createElement("li");
+                li.appendChild(document.createTextNode(data.message));
+                ul.appendChild(li);
+                ul.scrollTop = ul.scrollHeight;
+            } else if (data.event === "return_file") {
+                var downloadLink = document.createElement('a');
+                downloadLink.href = "data:application/zip;base64," + data.data;
+                downloadLink.download = 'Output.zip';
+                downloadLink.click();
+            } else if (data.event === "read_pdf_names") {
+                modalHot.updateSettings({
+                    colHeaders: data.headers,
+                    data: data.data
+                });
+                modalHot.render();
+                $('#myModal').modal('show');
+            } else if (data.event === 'rematch_processed') {
+                var rowNumber = data['row_number'];
+                var mergedData = data['data'][0];
+
+                console.log(rowNumber);
+                console.log(mergedData);
+
+                // Update the specific row in Handsontable
+                updateRowInHandsontable(rowNumber, mergedData);
+            } else if (data.event === "update_status") {
+                modalHot.updateSettings({
+                    colHeaders: data.headers,
+                    data: data.data
+                });
+                modalHot.render();
+            };
+        };
+
+        window.onbeforeunload = function () {
+            socket.close();
+        };
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const fileInput = document.getElementById('file-input');
+            const fileUploadContainer = document.querySelector('.file-upload-container');
+            const fileList = document.getElementById('file-list');
+
+            fileInput.addEventListener('change', handleFiles);
+            fileUploadContainer.addEventListener('dragover', handleDragOver);
+            fileUploadContainer.addEventListener('dragleave', handleDragLeave);
+            fileUploadContainer.addEventListener('drop', handleDrop);
+
+            function handleFiles(event) {
+                const files = event.target.files;
+                displayFiles(files);
+                uploadFiles(files);
+            }
+
+            function handleDragOver(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                fileUploadContainer.classList.add('dragover');
+            }
+
+            function handleDragLeave(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                fileUploadContainer.classList.remove('dragover');
+            }
+
+            function handleDrop(event) {
+                event.preventDefault();
+                event.stopPropagation();
+                fileUploadContainer.classList.remove('dragover');
+                const files = event.dataTransfer.files;
+                fileInput.files = files; // Update the file input
+                displayFiles(files);
+                uploadFiles(files);
+            }
+
+            function displayFiles(files) {
+                fileList.innerHTML = '';
+                Array.from(files).forEach(file => {
+                    const li = document.createElement('li');
+                    li.textContent = `${file.name} (${file.size} bytes)`;
+                    fileList.appendChild(li);
+                });
+            }
+
+            function uploadFiles(files) {
+                Array.from(files).forEach(file => {
+                    const reader = new FileReader();
+                    reader.onload = function (e) {
+                        const arrayBuffer = e.target.result;
+                        socket.send(JSON.stringify({
+                            event: "upload_files",
+                            file_name: file.name,
+                            file_type: file.type
+                        }));
+                        socket.send(arrayBuffer);
+                    };
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+
+            document.getElementById('Run').addEventListener('click', function() {
+                var requestData = {
+                    event: "run_program",
+                };
+
+                socket.send(JSON.stringify(requestData));
+            });
+
+            document.getElementById('save-changes-button').addEventListener('click', function() {
+                var modalData = modalHot.getData();
+                var modalHeaders = modalHot.getColHeader();
+
+                socket.send(JSON.stringify({
+                    event: 'save',
+                    modal_data: modalData,
+                    modal_headers: modalHeaders
+                    }));
+                });
+
+            var modalContainer = document.getElementById('modal-table');
+            modalHot = new Handsontable(modalContainer, {
+                data: [],
+                rowHeaders: true,
+                colHeaders: [], 
+                columns: [
+                    {},
+                    {},
+                    {},
+                    { type: 'checkbox' },
+                    {},
+                    {},
+                    {}
+                ],
+                colWidths: 150,
+                height: 1200,
+                width: 1700,
+                stretchH: 'all',
+                licenseKey: 'non-commercial-and-evaluation'
+            });
+        });
+    </script>
+</body>
+</html>

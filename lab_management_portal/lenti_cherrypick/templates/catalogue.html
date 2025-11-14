@@ -1,0 +1,102 @@
+<html>
+<head>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.10.24/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/1.7.0/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/1.7.0/js/buttons.html5.min.js"></script>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/1.10.24/css/jquery.dataTables.min.css">
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/buttons/1.7.0/css/buttons.dataTables.min.css">
+  <title>ThermoFisher Lenti-Services Catalogue</title>
+  <style>
+    #example_filter {
+      float: left;
+    }
+
+    #page-search-area {
+      float: right;
+    } 
+
+    #show-entries {
+      float: left;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>ThermoFisher Lenti-Services Catalogue</h1>
+  {% csrf_token %}
+
+  <table id="example" class="display" style="width:100%">
+    <thead>
+      <tr>
+        {% for header in headers %}
+          <th>{{ header }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <div id="page-search-area">
+    <input type="text" id="page-search" placeholder="Go to page">
+    <button id="go-to-page">Go</button>
+  </div> 
+  <div id="show-entries"></div>
+
+  <script>
+    $(document).ready(function() {
+      var table;
+
+      function initializeTable() {
+        $.ajaxSetup({
+          headers: {
+            'X-CSRFToken': '{{ csrf_token }}'
+          }
+        });
+        
+        table = $("#example").DataTable({
+          serverSide: true,
+          responsive: true,
+          dom: 'Bfrtipl',
+          buttons: ['copy',
+            {
+                text: 'My button',
+                action: function ( e, dt, node, config ) {
+                    alert( 'Button activated' );
+                }
+            }
+        ],
+          ajax: {
+            url: "filter",
+            type: "POST",
+            data: function (data) {
+              data.searchValue = $("#example_filter").val();
+              data.orderColumnIndex = data.order[0].column;
+              data.orderDirection = data.order[0].dir;
+            }
+          }
+        });
+        $('#example_filter input').unbind();
+        $('#example_filter input').bind('keyup', function(e) {
+          if (e.keyCode == 13) {
+            table.search(this.value).draw();   
+          }
+        });
+      }
+
+      initializeTable();
+
+      // Go to page functionality
+      $("#go-to-page").on("click", function() {
+        var page = parseInt($("#page-search").val(), 10);
+        if (!isNaN(page)) {
+          table.page(page - 1).draw(false);
+        }
+      });
+
+      // Move "Show entries" section
+      $("#example_length").detach().appendTo("#show-entries");
+    });
+  </script>
+</body>
+</html>
