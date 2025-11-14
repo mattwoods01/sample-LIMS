@@ -125,9 +125,10 @@ export LD_PRELOAD=/usr/lib64/libstdc++.so.6
 ---
 
 ## NGINX Configuration
-<pre>
+
 File: /etc/nginx/nginx.conf
 
+<pre>
 user nginx;
 worker_processes auto;
 
