@@ -102,7 +102,7 @@ S3 Bucket: lsg-bid-services
 ### .bashrc Configuration
 
 # Source global definitions
-if [ -f /etc/bashrc ]; then
+<pre> if [ -f /etc/bashrc ]; then
         . /etc/bashrc
 fi
 
@@ -117,10 +117,12 @@ export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk/jre/bin/java
 # Conda initialization
 export LD_PRELOAD=/usr/lib64/libstdc++.so.6
 
+</pre>
+
 ---
 
 ## NGINX Configuration
-
+<pre>
 File: /etc/nginx/nginx.conf
 
 user nginx;
@@ -159,13 +161,13 @@ http {
         }
     }
 }
-
+</pre>
 ---
 
 ## Gunicorn + Uvicorn Service
 
 File: /etc/systemd/system/gunicorn.service
-
+<pre>
 [Unit]
 Description=Gunicorn instance to serve lab_management_portal
 After=network.target
@@ -178,11 +180,11 @@ ExecStart=/home/ec2-user/Lab-Management-Portal/venv/bin/gunicorn -w 3 -k uvicorn
 
 [Install]
 WantedBy=multi-user.target
-
+</pre>
 ---
 
 ## Project Structure
-
+<pre>
 lab_management_portal/
 ├── attachment_uploader/
 ├── lenti_cherrypick/
@@ -204,6 +206,7 @@ lab_management_portal/
 ├── manage.py
 └── helper.py
 
+</pre>
 Each module contains independent URLs, views, WebSocket consumers, templates, CSV headers, PDF overlays, and logic.
 
 ---
